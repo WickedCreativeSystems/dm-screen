@@ -86,6 +86,10 @@ DM Screen uses the network, only while you are sharing:
 
 The server keeps only the last table sent, the handout and map pictures showing, and a hash of the room's key. It keeps no accounts, no logs of who opened a room, and no IP addresses. Without a share running, DM Screen sends nothing at all.
 
+## Also from this maker
+
+- [Mapsmith](https://github.com/walkertbrown/mapsmith): towns, dungeons and ships drawn from a seed right in your note, with numbered places you can click for a name, a hook and a note. Press **Explore** to walk a dungeon room by room. Free, with a $6 Pro save that brings any map into Roll20 or Foundry with its walls and doors.
+
 ## Install
 
 From itch: [buy DM Screen](https://bananafestdestiny.itch.io/dm-screen) and download `dm-screen.zip`. Unzip it into `<your vault>/.obsidian/plugins/`, so the files land in `.obsidian/plugins/dm-screen/`, then turn it on under **Settings → Community plugins** and paste your key (see Payment).
