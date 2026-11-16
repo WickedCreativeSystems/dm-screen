@@ -88,7 +88,7 @@ The server keeps only the last table sent, the handout and map pictures showing,
 
 ## Also from this maker
 
-- [Mapsmith](https://github.com/walkertbrown/mapsmith): towns, dungeons and ships drawn from a seed right in your note, with numbered places you can click for a name, a hook and a note. Press **Explore** to walk a dungeon room by room. Free, with a $6 Pro save that brings any map into Roll20 or Foundry with its walls and doors.
+- [Mapsmith](https://github.com/walkertbrown/mapsmith): towns, dungeons and ships drawn from a seed right in your note, with numbered places you can click for a name, a hook and a note. Press **Explore** to walk a dungeon room by room. Free, with a $6 Pro save that brings any map into Foundry, Atlas VTT or Roll20 with its walls and doors (walls in Roll20 need a paid Roll20 plan).
 
 ## Install
 
