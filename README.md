@@ -7,6 +7,7 @@ It reads what these plugins already do in your notes:
 - [Quick Initiative](https://github.com/walkertbrown/quick-initiative): the turn order, whose turn it is, the round, hit points and conditions.
 - [Tabletop Clocks](https://github.com/walkertbrown/tabletop-clocks): every clock in the open note when you start, and each one as you tick it.
 - [Dice Tray](https://github.com/walkertbrown/dice-tray): the rolls you click.
+- [Hexwright](https://github.com/WickedCreativeSystems/hexwright): the party's hex-crawl map, only the hexes they've seen, sent again after each day of travel (Hexwright 0.1.9 and later).
 
 ## Share the table
 
