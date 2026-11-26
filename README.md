@@ -7,11 +7,12 @@ DM Screen costs $12 once on itch.io. Without a key, every table works for an hou
 It reads what these plugins already do in your notes:
 
 - [Quick Initiative](https://github.com/WickedCreativeSystems/quick-initiative): the turn order, whose turn it is, the round, hit points and conditions.
+- [Initiative Tracker](https://github.com/javalent/initiative-tracker): the same, from its tracker. Creatures you hide in the tracker, or switch off, stay off the players' phones. If a fight is already going when you start sharing, it goes too.
 - [Tabletop Clocks](https://github.com/WickedCreativeSystems/tabletop-clocks): every clock in the open note when you start, and each one as you tick it.
 - [Dice Tray](https://github.com/WickedCreativeSystems/dice-tray): the rolls you click.
 - [Hexwright](https://github.com/WickedCreativeSystems/hexwright): the party's hex-crawl map, only the hexes they've seen, sent again after each day of travel (Hexwright 0.1.9 and later).
 
-All four are optional. Handouts and battle maps work without any of them.
+All five are optional. Handouts and battle maps work without any of them.
 
 ## Install
 

@@ -2,7 +2,7 @@ import { App, Editor, EventRef, MarkdownPostProcessorContext, MarkdownView, Menu
 import qrcode from 'qrcode-generator';
 import { MapBoard } from './board';
 import { fogString, mapForPlayers, type BattleMap } from './map';
-import { buildTable, clocksInNote, IMAGE_EXTENSIONS, noteAsHandout, setClock, type Clock, type ClockEvent, type FightEvent, type Handout, type MonsterHp, type Roll, type RollEvent, type Table } from './table';
+import { buildTable, clocksInNote, fromInitiativeTracker, IMAGE_EXTENSIONS, noteAsHandout, setClock, type Clock, type ClockEvent, type FightEvent, type Handout, type ITState, type MonsterHp, type Roll, type RollEvent, type Table } from './table';
 
 // The relay the players' phones read from. Nothing is sent there until the GM starts sharing (see the README).
 export const SERVER = 'https://bulkhead.bananafest-destiny.com';
@@ -152,6 +152,20 @@ export default class DmScreenPlugin extends Plugin {
 			// whose turn it is shows on the boards too
 			for (const b of this.boards) b.draw();
 		}));
+		// Initiative Tracker sends its whole fight on every change
+		this.registerEvent(on.on<ITState | undefined>('initiative-tracker:save-state', (s) => {
+			const f = fromInitiativeTracker(s, this.itDescending());
+			if (!f) return;
+			this.fight = f;
+			this.changed();
+			for (const b of this.boards) b.draw();
+		}));
+		this.registerEvent(on.on<void>('initiative-tracker:unloaded', () => {
+			if (this.fight?.sourcePath !== '') return;
+			this.fight = null;
+			this.changed();
+			for (const b of this.boards) b.draw();
+		}));
 		this.registerEvent(on.on<ClockEvent>('tabletop-clocks:change', (e) => {
 			this.clocks = setClock(this.clocks, e);
 			this.changed();
@@ -175,6 +189,16 @@ export default class DmScreenPlugin extends Plugin {
 	}
 
 	/** Opens a room if there isn't one, sends what's on the table, and shows the link to give the players. */
+	/** Initiative Tracker's plugin, when it is installed and on. */
+	itPlugin(): { data?: { state?: ITState; descending?: boolean } } | undefined {
+		const all = (this.app as unknown as { plugins?: { plugins?: Record<string, { data?: { state?: ITState; descending?: boolean } }> } }).plugins?.plugins;
+		return all?.['initiative-tracker'];
+	}
+
+	itDescending(): boolean {
+		return this.itPlugin()?.data?.descending !== false;
+	}
+
 	async share() {
 		if (!this.sharing) {
 			let got: { room?: string; secret?: string; trial?: Trial };
@@ -192,6 +216,8 @@ export default class DmScreenPlugin extends Plugin {
 			this.settings.secret = got.secret;
 			this.settings.trial = got.trial ?? null;
 			await this.saveSettings();
+			// start with a fight Initiative Tracker already has going, if no tracker has sent one yet
+			if (!this.fight) this.fight = fromInitiativeTracker(this.itPlugin()?.data?.state, this.itDescending());
 			// start with the clocks already written in the open note
 			const file = this.app.workspace.getActiveFile();
 			if (file) for (const c of clocksInNote(await this.app.vault.cachedRead(file))) this.clocks = setClock(this.clocks, { sourcePath: file.path, ...c });

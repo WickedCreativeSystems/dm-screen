@@ -114,3 +114,63 @@ export function noteAsHandout(md: string): { text: string; image: string | null 
 		.trim();
 	return { text, image };
 }
+
+/** One creature as Initiative Tracker sends it in its "initiative-tracker:save-state" event (only the fields used here). */
+export interface ITCreature {
+	name: string;
+	display?: string | null;
+	initiative?: number;
+	currentHP?: number;
+	currentMaxHP?: number;
+	hp?: number;
+	status?: string[];
+	enabled?: boolean;
+	player?: boolean;
+	active?: boolean;
+	hidden?: boolean;
+}
+export interface ITState { creatures?: ITCreature[]; state?: boolean; round?: number; name?: string }
+
+/**
+ * Initiative Tracker's saved fight as a fight DM Screen can share. Its event lists the creatures in the order they
+ * were added, without its sort or its numbers, so both are rebuilt the way it does them: highest initiative first
+ * (lowest, if it is set to ascending), ties in the order added, and a monster that shares its name with another
+ * numbered 1, 2, 3 in the order added. Creatures hidden in the tracker, and ones switched off, are left out.
+ * A tracker that hasn't started its fight shares no turn order.
+ */
+export function fromInitiativeTracker(s: ITState | null | undefined, descending = true): FightEvent | null {
+	if (!s || !Array.isArray(s.creatures)) return null;
+	const all = s.creatures.filter((c) => c && typeof c.name === 'string');
+	const base = (c: ITCreature) => (c.display && c.display.trim()) || c.name;
+	const count = new Map<string, number>();
+	for (const c of all) if (!c.player) count.set(c.name, (count.get(c.name) ?? 0) + 1);
+	const seen = new Map<string, number>();
+	const named = all.map((c) => {
+		let name = base(c);
+		if (!c.player && (count.get(c.name) ?? 0) > 1) {
+			const n = (seen.get(name) ?? 0) + 1;
+			seen.set(name, n);
+			name = `${name} ${n}`;
+		}
+		return { c, name };
+	});
+	const init = (c: ITCreature) => (typeof c.initiative === 'number' && isFinite(c.initiative) ? c.initiative : 0);
+	const sorted = named
+		.map((x, i) => ({ ...x, i }))
+		.sort((a, b) => (init(a.c) !== init(b.c) ? (descending ? init(b.c) - init(a.c) : init(a.c) - init(b.c)) : a.i - b.i));
+	const shown = sorted.filter((x) => !x.c.hidden && x.c.enabled !== false);
+	const num = (v: unknown) => (typeof v === 'number' && isFinite(v) ? v : undefined);
+	const active = shown.find((x) => x.c.active);
+	return {
+		sourcePath: '',
+		round: s.state ? Math.max(1, num(s.round) ?? 1) : 0,
+		current: active ? active.name : null,
+		combatants: shown.map(({ c, name }) => ({
+			name,
+			hp: num(c.currentHP),
+			maxHp: num(c.currentMaxHP) ?? num(c.hp),
+			player: !!c.player,
+			conditions: Array.isArray(c.status) ? c.status.filter((x) => typeof x === 'string') : [],
+		})),
+	};
+}
