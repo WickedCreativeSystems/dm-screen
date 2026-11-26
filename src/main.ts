@@ -1,7 +1,7 @@
 import { App, Editor, EventRef, MarkdownPostProcessorContext, Menu, Modal, Notice, Plugin, PluginSettingTab, Setting, SettingDefinitionItem, TAbstractFile, TFile, requestUrl } from 'obsidian';
 import qrcode from 'qrcode-generator';
 import { MapBoard } from './board';
-import { mapForPlayers, type BattleMap } from './map';
+import { fogString, mapForPlayers, type BattleMap } from './map';
 import { buildTable, clocksInNote, IMAGE_EXTENSIONS, noteAsHandout, setClock, type Clock, type ClockEvent, type FightEvent, type Handout, type MonsterHp, type Roll, type RollEvent, type Table } from './table';
 
 // The relay the players' phones read from. Nothing is sent there until the GM starts sharing (see the README).
@@ -27,7 +27,11 @@ export interface Trial { ends: number; buy?: string; why?: string }
 const IMAGE_BYTES = 1024 * 1024;
 
 // the map being shown: the note its block is in, and the picture as it was sent (v, from the room)
-export interface ShownMap { sourcePath: string; image: string | null; v?: string; map: BattleMap }
+export interface ShownMap { sourcePath: string; image: string | null; v?: string; map: BattleMap; fog: string }
+
+/** The squares to paint over before a map's picture leaves the vault: null when the whole map shows. */
+export type Cover = { cols: number; rows: number; seen: Set<number> } | null;
+const fogKey = (map: BattleMap) => (map.fog ? fogString(map) : '');
 
 const MAP_TEMPLATE = '```battlemap\ngrid 12x8\nAria B2 blue\nBorin C3 green\nGoblin 1 J6 red\nGoblin 2 K5 red hidden\n```\n';
 const OPEN = /^((?:\s*>)*\s*)(`{3,}|~{3,})\s*(\S+)/;
@@ -43,7 +47,8 @@ export default class DmScreenPlugin extends Plugin {
 	shownMap: ShownMap | null = null;
 	boards = new Set<MapBoard>();
 	watching = 0;
-	shrink: (bytes: ArrayBuffer) => Promise<ArrayBuffer | null> = shrink;
+	shrink: (bytes: ArrayBuffer, cover?: Cover) => Promise<ArrayBuffer | null> = shrink;
+	private fogTimer = 0;
 	now: () => number = Date.now;
 	private status: HTMLElement | null = null;
 	private timer = 0;
@@ -146,6 +151,7 @@ export default class DmScreenPlugin extends Plugin {
 
 	onunload() {
 		window.clearTimeout(this.timer);
+		window.clearTimeout(this.fogTimer);
 	}
 
 	table(): Table {
@@ -252,13 +258,13 @@ export default class DmScreenPlugin extends Plugin {
 	}
 
 	/** A battle map: its picture goes once, made small for phones, in a slot of its own; then its tokens with each move. */
-	async showMap(sourcePath: string, map: BattleMap, picture: TFile | null) {
+	async showMap(sourcePath: string, map: BattleMap, picture: TFile | null, quiet = false) {
 		if (!(await this.ready())) return;
 		const { room, secret } = this.settings;
 		const had = this.shownMap?.v;
 		let v: string | undefined;
 		if (picture) {
-			const small = await this.shrink(await this.app.vault.readBinary(picture)).catch(() => null);
+			const small = await this.shrink(await this.app.vault.readBinary(picture), map.fog ? { cols: map.cols, rows: map.rows, seen: map.seen } : null).catch(() => null);
 			if (!small) {
 				new Notice('Could not read the map\'s picture.');
 				return;
@@ -270,12 +276,12 @@ export default class DmScreenPlugin extends Plugin {
 				return;
 			}
 		}
-		this.shownMap = { sourcePath, image: map.image, map };
+		this.shownMap = { sourcePath, image: map.image, map, fog: fogKey(map) };
 		if (v) this.shownMap.v = v;
 		await this.send();
 		if (had && !v) await this.dropMap();
 		for (const b of this.boards) b.draw();
-		new Notice('The players can see the map now.');
+		if (!quiet) new Notice('The players can see the map now.');
 	}
 
 	/** The shown map's block changed: new places go out, and a new picture if the block names another. */
@@ -285,6 +291,15 @@ export default class DmScreenPlugin extends Plugin {
 		if (board.map.image !== shown.image) return this.showMap(board.sourcePath, board.map, board.picture());
 		shown.map = board.map;
 		this.changed();
+		// the fog moved: the picture goes again with the new squares painted over, a moment after the last change
+		const key = fogKey(board.map);
+		if (key !== shown.fog && shown.v) {
+			window.clearTimeout(this.fogTimer);
+			this.fogTimer = window.setTimeout(() => {
+				const now = this.shownMap;
+				if (now && now.sourcePath === board.sourcePath && fogKey(now.map) !== now.fog) void this.showMap(now.sourcePath, now.map, board.picture(), true);
+			}, 800);
+		} else shown.fog = key;
 	}
 
 	async hideMap() {
@@ -495,7 +510,7 @@ function canShow(file: TFile) {
 }
 
 /** A picture made small enough for a phone and for the room: at most 1600px a side, as JPEG, under 1MB. */
-export async function shrink(bytes: ArrayBuffer): Promise<ArrayBuffer | null> {
+export async function shrink(bytes: ArrayBuffer, cover: Cover = null): Promise<ArrayBuffer | null> {
 	const bitmap = await createImageBitmap(new Blob([bytes]));
 	for (const [side, quality] of [[1600, 0.85], [1200, 0.75], [900, 0.6]] as const) {
 		const k = Math.min(1, side / Math.max(bitmap.width, bitmap.height));
@@ -508,6 +523,14 @@ export async function shrink(bytes: ArrayBuffer): Promise<ArrayBuffer | null> {
 		g.fillStyle = '#fff';
 		g.fillRect(0, 0, canvas.width, canvas.height);
 		g.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+		// fog of war: the squares not revealed are painted out, so they never leave the vault
+		if (cover) {
+			g.fillStyle = '#111';
+			const w = canvas.width / cover.cols;
+			const h = canvas.height / cover.rows;
+			for (let r = 0; r < cover.rows; r++)
+				for (let c = 0; c < cover.cols; c++) if (!cover.seen.has(r * cover.cols + c)) g.fillRect(Math.floor(c * w), Math.floor(r * h), Math.ceil(w) + 1, Math.ceil(h) + 1);
+		}
 		const blob = await new Promise<Blob | null>((done) => canvas.toBlob(done, 'image/jpeg', quality));
 		if (blob && blob.size <= IMAGE_BYTES) return blob.arrayBuffer();
 	}

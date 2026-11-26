@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addTokens, cellName, colName, initials, mapForPlayers, moveToken, parseMap, readCell } from '../src/map';
+import { addTokens, box, cellName, colName, fogOff, fogString, initials, mapForPlayers, moveToken, parseMap, readCell, revealWords, setSeen } from '../src/map';
 
 const SRC = '![[Cellar.png]] 20x14\nAria C4 blue\n[[Goblin]] 1 F7 red hidden\nGoblin 2\n# notes\nBorin T14';
 
@@ -60,5 +60,41 @@ describe('battle map', () => {
 				{ name: 'Borin', col: 19, row: 13 },
 			],
 		});
+	});
+});
+
+describe('fog of war', () => {
+	const FOG = '![[Cellar.png]] 4x3\nfog\nreveal A1:B2 D3\nAria A1 blue\nGoblin D1 red\nOrc D3';
+
+	it('reads the fog and the revealed squares, and skips them as tokens', () => {
+		const m = parseMap(FOG);
+		expect(m.fog).toBe(true);
+		expect([...m.seen].sort((a, b) => a - b)).toEqual([0, 1, 4, 5, 11]);
+		expect(m.tokens.map((t) => t.name)).toEqual(['Aria', 'Goblin', 'Orc']);
+		expect(parseMap('4x3\nreveal A1').fog).toBe(false);
+	});
+
+	it('keeps tokens in the fog off the players\' phones and sends which squares show', () => {
+		const p = mapForPlayers(parseMap(FOG), undefined);
+		expect(p.tokens.map((t) => t.name)).toEqual(['Aria', 'Orc']);
+		expect(p.fog).toBe('110011000001');
+		expect(mapForPlayers(parseMap('4x3\nreveal A1\nGoblin D1'), undefined)).not.toHaveProperty('fog');
+	});
+
+	it('writes the revealed squares as few boxes as it takes', () => {
+		expect(revealWords(new Set([0, 1, 4, 5, 11]), 4, 3)).toBe('A1:B2 D3');
+		expect(revealWords(new Set(), 4, 3)).toBe('');
+		expect(revealWords(new Set(box({ col: 3, row: 2 }, { col: 0, row: 0 }, 4)), 4, 3)).toBe('A1:D3');
+	});
+
+	it('puts fog under the picture line, rewrites reveal in place, and turns off without losing it', () => {
+		const on = setSeen('![[Cellar.png]] 4x3\nAria A1', new Set([0]), 4, 3);
+		expect(on).toBe('![[Cellar.png]] 4x3\nfog\nreveal A1\nAria A1');
+		expect(setSeen(FOG, new Set([2, 3]), 4, 3)).toBe('![[Cellar.png]] 4x3\nfog\nreveal C1:D1\nAria A1 blue\nGoblin D1 red\nOrc D3');
+		expect(setSeen('Aria A1\nreveal A1\nreveal B1', new Set(), 4, 3)).toBe('Aria A1\nfog');
+		const off = fogOff(FOG);
+		expect(parseMap(off).fog).toBe(false);
+		expect(parseMap(setSeen(off, parseMap(off).seen, 4, 3)).seen.size).toBe(5);
+		expect(fogString(parseMap(FOG))).toBe('110011000001');
 	});
 });

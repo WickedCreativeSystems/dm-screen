@@ -1,6 +1,6 @@
 import { MarkdownPostProcessorContext, MarkdownRenderChild, TFile } from 'obsidian';
 import type DmScreenPlugin from './main';
-import { cellName, initials, moveToken, addTokens, parseMap, type BattleMap, type Token } from './map';
+import { box, cellName, fogOff, initials, moveToken, addTokens, parseMap, setSeen, type BattleMap, type Token } from './map';
 import { IMAGE_EXTENSIONS } from './table';
 
 // A drag starts once the pointer has gone this far; less is a click.
@@ -11,6 +11,8 @@ export class MapBoard extends MarkdownRenderChild {
 	// the chosen token and the one to focus after the note is rewritten, by note and line, so they survive the redraw
 	static chosen = new Map<string, number>();
 	static focus: { sourcePath: string; index: number } | null = null;
+	// notes whose map is in reveal mode, where a click or a drag on the map reveals squares (or hides revealed ones)
+	static revealing = new Set<string>();
 	map: BattleMap;
 	private dragging = false;
 	private dragged = false;
@@ -63,8 +65,25 @@ export class MapBoard extends MarkdownRenderChild {
 		const bar = el.createDiv({ cls: 'dm-screen-map-bar' });
 		bar.createSpan({ cls: 'dm-screen-map-title', text: `${this.map.image ? this.map.image.split('/').pop()!.replace(/\.[^.]+$/, '') : 'Battle map'} · ${cols}×${rows}` });
 		if (this.map.image && !this.picture()) bar.createSpan({ cls: 'dm-screen-map-missing', text: `No picture called ${this.map.image} in this vault` });
+		const revealing = this.map.fog && MapBoard.revealing.has(this.sourcePath);
 		const share = bar.createEl('button', { text: shown ? 'Hide from players' : 'Show to players', cls: shown ? '' : 'mod-cta' });
 		share.onclick = () => void (shown ? this.plugin.hideMap() : this.plugin.showMap(this.sourcePath, this.map, this.picture()));
+		const fog = bar.createEl('button', { text: this.map.fog ? 'Fog off' : 'Fog of war' });
+		fog.setAttr('title', this.map.fog ? 'Players see the whole map again' : 'Players see only the squares you reveal');
+		fog.onclick = () => {
+			if (this.map.fog) MapBoard.revealing.delete(this.sourcePath);
+			else MapBoard.revealing.add(this.sourcePath);
+			void this.plugin.edit(this.containerEl, this.ctx, 'battlemap', (body) => (this.map.fog ? fogOff(body) : setSeen(body, this.map.seen, this.map.cols, this.map.rows)));
+		};
+		if (this.map.fog) {
+			const rv = bar.createEl('button', { text: revealing ? 'Done revealing' : 'Reveal', cls: revealing ? 'mod-cta' : '' });
+			rv.setAttr('aria-pressed', String(revealing));
+			rv.onclick = () => {
+				if (revealing) MapBoard.revealing.delete(this.sourcePath);
+				else MapBoard.revealing.add(this.sourcePath);
+				this.draw();
+			};
+		}
 
 		const stage = el.createDiv({ cls: 'dm-screen-map-stage' });
 		stage.setCssProps({ '--cols': String(cols), '--rows': String(rows) });
@@ -76,6 +95,12 @@ export class MapBoard extends MarkdownRenderChild {
 		for (let c = 1; c < cols; c++) d += `M${c} 0V${rows}`;
 		for (let r = 1; r < rows; r++) d += `M0 ${r}H${cols}`;
 		grid.createSvg('path', { attr: { d, 'vector-effect': 'non-scaling-stroke' } });
+		if (this.map.fog) {
+			let f = '';
+			for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) if (!this.map.seen.has(r * cols + c)) f += `M${c} ${r}h1v1h-1z`;
+			if (f) grid.createSvg('path', { cls: 'dm-screen-fog', attr: { d: f } });
+		}
+		if (revealing) stage.addClass('is-revealing');
 
 		const cellAt = (e: { clientX: number; clientY: number }) => {
 			const b = stage.getBoundingClientRect();
@@ -84,8 +109,47 @@ export class MapBoard extends MarkdownRenderChild {
 			if (!(x >= 0 && x < 1 && y >= 0 && y < 1)) return null;
 			return { col: Math.floor(x * cols), row: Math.floor(y * rows) };
 		};
+		// reveal mode: press on a square and drag to a corner; the box is revealed, or hidden if the first square was revealed
+		if (revealing) {
+			const preview = grid.createSvg('rect', { cls: 'dm-screen-fog-box' });
+			preview.setAttribute('visibility', 'hidden');
+			stage.addEventListener('pointerdown', (down) => {
+				if (down.button !== 0) return;
+				const a = cellAt(down);
+				if (!a) return;
+				down.preventDefault();
+				stage.setPointerCapture?.(down.pointerId);
+				let b = a;
+				const show = () => {
+					const at = { x: Math.min(a.col, b.col), y: Math.min(a.row, b.row), width: Math.abs(a.col - b.col) + 1, height: Math.abs(a.row - b.row) + 1, visibility: 'visible' };
+					for (const [k, v] of Object.entries(at)) preview.setAttribute(k, String(v));
+				};
+				show();
+				const move = (e: PointerEvent) => {
+					const at = cellAt(e);
+					if (at) b = at;
+					show();
+				};
+				const up = () => {
+					stage.removeEventListener('pointermove', move);
+					stage.removeEventListener('pointerup', up);
+					stage.removeEventListener('pointercancel', up);
+					const seen = new Set(this.map.seen);
+					const hide = seen.has(a.row * cols + a.col);
+					for (const i of box(a, b, cols)) {
+						if (hide) seen.delete(i);
+						else seen.add(i);
+					}
+					void this.plugin.edit(this.containerEl, this.ctx, 'battlemap', (body) => setSeen(body, seen, cols, rows));
+				};
+				stage.addEventListener('pointermove', move);
+				stage.addEventListener('pointerup', up);
+				stage.addEventListener('pointercancel', up);
+			});
+		}
 		// a chosen token goes to the square clicked
 		stage.addEventListener('click', (e) => {
+			if (revealing) return;
 			if (e.target !== stage && !(e.target instanceof Element && e.target.closest('.dm-screen-map-grid, .dm-screen-map-img'))) return;
 			const at = cellAt(e);
 			const t = this.map.tokens.find((x) => x.index === this.chosen);
@@ -132,7 +196,7 @@ export class MapBoard extends MarkdownRenderChild {
 			add.value = '';
 			void this.plugin.edit(this.containerEl, this.ctx, 'battlemap', (body) => addTokens(body, text));
 		});
-		el.createDiv({ cls: 'dm-screen-map-hint', text: 'Drag a token, or click it and then a square. Arrow keys move the chosen one; Delete takes it off the map. "hidden" at the end of a line keeps it off the players\' phones.' });
+		el.createDiv({ cls: 'dm-screen-map-hint', text: revealing ? 'Click a square, or drag across a box of them, to reveal it. Do the same on revealed squares to hide them again. The players see only the revealed squares and the tokens on them.' : 'Drag a token, or click it and then a square. Arrow keys move the chosen one; Delete takes it off the map. "hidden" at the end of a line keeps it off the players\' phones.' });
 
 		const f = MapBoard.focus;
 		if (f && f.sourcePath === this.sourcePath) {

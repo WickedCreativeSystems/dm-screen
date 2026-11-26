@@ -65,7 +65,26 @@ Drag a token to move it, or click it and then click a square. With a token chose
 
 **Show to players** above the map sends it to their phones, under the turn order. The picture goes once, shrunk like a handout; after that only the squares go, as you move tokens. The token whose turn it is in Quick Initiative (matched by name) has a ring on the map, and a token that is down is greyed out. **Hide from players** (or **Hide the map from players**) takes the map and its picture down. One map shows at a time, beside any handout.
 
-Not yet: fog of war, token pictures, measuring.
+### Fog of war
+
+Press **Fog of war** above the map and the players see only the squares you reveal. Press **Reveal**, then click a square or drag across a box of them to reveal it; do the same on revealed squares to hide them again, and press **Done revealing** when you're finished. In your note the hidden squares show shaded, so you still see the whole map.
+
+On the players' phones the hidden squares are dark, and a token on one isn't sent. The map picture is darkened on the hidden squares before it leaves your vault, so nobody can find the rest of the map in the page. When you reveal more, the picture is sent again a moment later.
+
+The block keeps the fog as two lines, so it is still there next time you open the note:
+
+````
+```battlemap
+![[Mill cellar.png]] 12x8
+Aria C6 blue
+fog
+reveal A1:D4 F2
+```
+````
+
+`reveal` lists the revealed squares, a box as two corners (`A1:D4`) or a single square (`F2`). **Fog off** takes the `fog` line out and keeps the `reveal` line, so turning fog back on brings back what you'd revealed.
+
+Not yet: token pictures, measuring.
 
 ## What the players see
 
@@ -77,7 +96,7 @@ Only what you choose:
 
 These three settings are in **Settings → DM Screen**.
 
-Nothing else from your vault is sent: no note text but the handouts you show, no monster stats, no file names but a handout's, and of a battle map only its picture, its grid and the tokens not marked `hidden`.
+Nothing else from your vault is sent: no note text but the handouts you show, no monster stats, no file names but a handout's, and of a battle map only its picture (darkened where fog hides it), its grid, which squares are revealed, and the tokens not marked `hidden` or under fog.
 
 ## Payment
 
@@ -94,7 +113,7 @@ DM Screen uses the network only while you are sharing, or when you press **Check
 - When you start sharing, it asks `https://bulkhead.bananafest-destiny.com/api/table/open` for a room. That server is run by the maker of this plugin.
 - While you share, each change sends the table as described above to that room. The players' phones read it from there.
 - A handout picture goes to the same room, shrunk first. Hiding it deletes it.
-- A battle map you show sends its picture to the same room, shrunk first, and then its grid and the names, squares and colours of the tokens not marked `hidden`. Hiding it deletes the picture.
+- A battle map you show sends its picture to the same room, shrunk first, and then its grid, which squares fog of war leaves revealed, and the names, squares and colours of the tokens not marked `hidden` or under fog. With fog on, the picture is darkened on the hidden squares first and sent again when you reveal more. Hiding it deletes the picture.
 - When you stop, or after 12 hours with no changes (an hour from opening, on the free trial), the room and everything in it is deleted.
 - With a key in settings, the key goes with each new table, and **Check** sends it on its own. The server asks itch once whether it is a DM Screen key and then keeps only a hash of it, and a count of how many tables it opened that day.
 - **Lost your key?** sends the address you type. The server asks itch for that address's DM Screen key and mails it there. It keeps a hash of the address for an hour, so it mails once an hour at most, and never logs it.

@@ -224,8 +224,9 @@ describe('the battle map', () => {
 		const proc = (plugin as never as { codeBlocks: Record<string, (s: string, e: HTMLElement, c: unknown) => void> }).codeBlocks.battlemap!;
 		const el = document.createElement('div');
 		document.body.replaceChildren(el);
-		const body = () => app.notes.get('Cellar.md')!.content.split('\n').slice(3, 8).join('\n');
-		const c = () => ctx('Cellar.md', { text: app.notes.get('Cellar.md')!.content, lineStart: 2, lineEnd: 8 });
+		const end = () => app.notes.get('Cellar.md')!.content.split('\n').lastIndexOf('```');
+		const body = () => app.notes.get('Cellar.md')!.content.split('\n').slice(3, end()).join('\n');
+		const c = () => ctx('Cellar.md', { text: app.notes.get('Cellar.md')!.content, lineStart: 2, lineEnd: end() });
 		const draw = () => proc(body(), el, c());
 		draw();
 		return { app, plugin, el, draw, note: () => app.notes.get('Cellar.md')!.content };
@@ -303,6 +304,51 @@ describe('the battle map', () => {
 		await plugin.hideMap();
 		expect(lastTable().map).toBeUndefined();
 		expect(requestUrl.sent.at(-1)).toMatchObject({ url: `${SERVER}/api/table/k3m9pqrstu/map`, method: 'DELETE' });
+	});
+
+	it('fog of war: reveals a dragged box, keeps fogged tokens off the phones and paints the picture over', async () => {
+		const { el, plugin, draw, note } = await board();
+		const covers: unknown[] = [];
+		plugin.shrink = async (_b, cover) => (covers.push(cover && { ...cover, seen: [...cover.seen] }), new ArrayBuffer(100_000));
+		const button = (text: string) => Array.from(el.querySelectorAll<HTMLElement>('.dm-screen-map-bar button')).find((b) => b.textContent === text)!;
+		button('Fog of war').click();
+		await new Promise((r) => setTimeout(r, 0));
+		expect(note()).toContain('8x6\nfog\nAria B2 blue');
+		draw();
+		expect(button('Done revealing')).toBeTruthy();
+		expect(el.querySelector('.dm-screen-fog')).toBeTruthy();
+		const stage = el.querySelector<HTMLElement>('.dm-screen-map-stage')!;
+		stage.getBoundingClientRect = () => ({ left: 0, top: 0, width: 800, height: 600, right: 800, bottom: 600, x: 0, y: 0, toJSON: () => '' });
+		// from A1 to C3: Aria on B2 is revealed, Goblin 1 on F4 stays in the fog
+		stage.dispatchEvent(new PointerEvent('pointerdown', { clientX: 10, clientY: 10, button: 0 }));
+		stage.dispatchEvent(new PointerEvent('pointermove', { clientX: 250, clientY: 250 }));
+		stage.dispatchEvent(new PointerEvent('pointerup', { clientX: 250, clientY: 250 }));
+		await new Promise((r) => setTimeout(r, 0));
+		expect(note()).toContain('fog\nreveal A1:C3\nAria');
+		draw();
+		Notice.last = '';
+		button('Show to players').click();
+		await vi.waitFor(() => expect(Notice.last).toBe('The players can see the map now.'));
+		expect(lastTable().map.tokens.map((t: { name: string }) => t.name)).toEqual(['Aria']);
+		expect(lastTable().map.fog).toBe('111' + '0'.repeat(5) + '111' + '0'.repeat(5) + '111' + '0'.repeat(29));
+		expect(covers.at(-1)).toEqual({ cols: 8, rows: 6, seen: [0, 1, 2, 8, 9, 10, 16, 17, 18] });
+		// revealing more sends the picture again, painted over anew
+		const stage2 = el.querySelector<HTMLElement>('.dm-screen-map-stage')!;
+		stage2.getBoundingClientRect = stage.getBoundingClientRect;
+		vi.useFakeTimers();
+		stage2.dispatchEvent(new PointerEvent('pointerdown', { clientX: 750, clientY: 550, button: 0 }));
+		stage2.dispatchEvent(new PointerEvent('pointerup', { clientX: 750, clientY: 550 }));
+		await vi.runAllTimersAsync();
+		draw();
+		await vi.runAllTimersAsync();
+		vi.useRealTimers();
+		await vi.waitFor(() => expect(requestUrl.sent.filter((r) => r.url.endsWith('/map') && r.method === 'PUT')).toHaveLength(2));
+		expect((covers.at(-1) as { seen: number[] }).seen).toContain(47);
+		// fog off: the whole picture again, the reveal line kept
+		button('Fog off').click();
+		await new Promise((r) => setTimeout(r, 0));
+		expect(note()).not.toMatch(/^fog$/m);
+		expect(note()).toContain('reveal A1:C3 H6');
 	});
 
 	it('rings the token whose turn it is', async () => {

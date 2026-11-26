@@ -117,3 +117,7 @@
 .dm-screen-purple { --dm-token: #8e44ad; }
 .dm-screen-pink { --dm-token: #c2185b; }
 @media (prefers-reduced-motion: reduce) { .dm-screen-map-stage .dm-screen-token { transition: none; } }
+.dm-screen-map-grid .dm-screen-fog { fill: rgba(10, 10, 14, 0.55); stroke: none; }
+.dm-screen-map-grid .dm-screen-fog-box { fill: var(--interactive-accent); fill-opacity: 0.25; stroke: var(--interactive-accent); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.dm-screen-map-stage.is-revealing { cursor: crosshair; touch-action: none; }
+.dm-screen-map-stage.is-revealing .dm-screen-token { pointer-events: none; }
