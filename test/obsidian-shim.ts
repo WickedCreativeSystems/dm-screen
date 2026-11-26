@@ -90,6 +90,7 @@ export class App {
 			return n.content;
 		},
 	};
+	activeView: { editor: unknown } | null = null;
 	workspace = {
 		trigger: (name: string, data: unknown) => {
 			this.events.push({ name, data });
@@ -99,6 +100,7 @@ export class App {
 			this.handlers.set(name, [...(this.handlers.get(name) ?? []), fn]);
 			return { name, fn };
 		},
+		getActiveViewOfType: (_t: unknown) => this.activeView ?? null,
 		getActiveFile: () => (this.active ? new TFile(this.active) : null),
 		getLeaf: () => ({ openFile: async (f: TFile) => { this.active = f.path; this.opened.push(f.path); } }),
 		openLinkText: async (link: string) => { this.opened.push(link); },
@@ -137,6 +139,7 @@ export class Plugin extends Component {
 	async saveData(d: unknown) { this.data = d; }
 }
 
+export class MarkdownView {}
 export class WorkspaceLeaf {
 	view: unknown = null;
 	constructor(public app: App) {}

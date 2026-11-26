@@ -1,4 +1,4 @@
-import { App, Editor, EventRef, MarkdownPostProcessorContext, Menu, Modal, Notice, Plugin, PluginSettingTab, Setting, SettingDefinitionItem, TAbstractFile, TFile, requestUrl } from 'obsidian';
+import { App, Editor, EventRef, MarkdownPostProcessorContext, MarkdownView, Menu, Modal, Notice, Plugin, PluginSettingTab, Setting, SettingDefinitionItem, TAbstractFile, TFile, requestUrl } from 'obsidian';
 import qrcode from 'qrcode-generator';
 import { MapBoard } from './board';
 import { fogString, mapForPlayers, type BattleMap } from './map';
@@ -102,7 +102,16 @@ export default class DmScreenPlugin extends Plugin {
 		this.addCommand({
 			id: 'insert-map',
 			name: 'Insert a battle map',
-			editorCallback: (editor: Editor) => editor.replaceSelection(MAP_TEMPLATE),
+			// A plain callback: editorCallback does nothing while the cursor is in a new note's title.
+			callback: () => {
+				const ed = this.app.workspace.getActiveViewOfType(MarkdownView)?.editor;
+				if (!ed) return void new Notice('Open a note first.');
+				ed.focus();
+				const at = ed.getCursor();
+				const text = (at.ch > 0 ? '\n' : '') + MAP_TEMPLATE; // a fence mid-line isn't a block
+				ed.replaceRange(text, at);
+				ed.setCursor(ed.offsetToPos(ed.posToOffset(at) + text.length));
+			},
 		});
 		this.addCommand({
 			id: 'hide-map',

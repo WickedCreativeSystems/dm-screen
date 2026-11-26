@@ -80,7 +80,7 @@
 	line-height: 1;
 	overflow: hidden;
 }
-.dm-screen-map-stage .dm-screen-token > span:first-child { font-size: clamp(8px, calc(100cqw / var(--cols) * 0.32), 18px); }
+.dm-screen-map-stage .dm-screen-token > span:first-child { height: 82%; width: auto; max-width: none; flex: none; min-width: 0; box-sizing: border-box; font-size: clamp(8px, calc(100cqw / var(--cols) * 0.32), 18px); }
 .dm-screen-token.is-hidden > span:first-child { opacity: 0.45; border-style: dashed; }
 .dm-screen-token.is-down > span:first-child { filter: grayscale(1); opacity: 0.6; }
 .dm-screen-token.is-turn > span:first-child { outline: 3px solid var(--text-accent); outline-offset: 2px; }

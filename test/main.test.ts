@@ -378,3 +378,25 @@ describe('the watching count', () => {
 		expect((plugin as unknown as { status: HTMLElement }).status.textContent).toBe('Table shared · 3 watching');
 	});
 });
+
+describe('inserting a battle map', () => {
+	it('puts the block at the cursor without an editor callback, so it works from a new note\'s title', async () => {
+		const { app, plugin } = await setup();
+		const cmd = (plugin as never as { commands: { id: string; callback?: () => void }[] }).commands.find((c) => c.id === 'insert-map')!;
+		cmd.callback!();
+		let text = 'Mill cellar';
+		const at = { line: 0, ch: 11 };
+		const editor = {
+			focus: () => {},
+			getCursor: () => at,
+			replaceRange: (t: string) => { text += t; },
+			posToOffset: (p: { ch: number }) => p.ch,
+			offsetToPos: (o: number) => ({ line: 0, ch: o }),
+			setCursor: vi.fn(),
+		};
+		app.activeView = { editor };
+		cmd.callback!();
+		expect(text).toBe('Mill cellar\n```battlemap\ngrid 12x8\nAria B2 blue\nBorin C3 green\nGoblin 1 J6 red\nGoblin 2 K5 red hidden\n```\n');
+		expect(editor.setCursor).toHaveBeenCalled();
+	});
+});
