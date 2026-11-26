@@ -16,6 +16,7 @@ async function setup() {
 	app.active = 'Mill.md';
 	const plugin = new DmScreenPlugin(app as never, { id: 'dm-screen' } as never);
 	plugin.now = () => 1000;
+	plugin.countEvery = 0;
 	await plugin.onload();
 	return { app, plugin };
 }
@@ -359,5 +360,21 @@ describe('the battle map', () => {
 		});
 		expect(el.querySelector('.is-turn')!.textContent).toBe('G1');
 		expect(el.querySelector('.is-down')!.textContent).toBe('A');
+	});
+});
+
+describe('the watching count', () => {
+	it('asks the room on its own while sharing, and shows a phone that opened the link', async () => {
+		const { plugin } = await setup();
+		await plugin.count();
+		expect(requestUrl.sent).toEqual([]);
+		await plugin.share();
+		requestUrl.sent.length = 0;
+		requestUrl.reply = (r) => (r.url.endsWith('/watching') ? { status: 200, json: { watching: 3 } } : { status: 200, json: { ok: true, watching: 2 } });
+		await plugin.count();
+		expect(requestUrl.sent.map((r) => [r.method ?? 'GET', r.url.replace(/.*\/api/, '')])).toEqual([['GET', '/table/k3m9pqrstu/watching']]);
+		expect(requestUrl.sent[0]!.headers).toEqual({ authorization: 'Bearer the-secret' });
+		expect(plugin.watching).toBe(3);
+		expect((plugin as unknown as { status: HTMLElement }).status.textContent).toBe('Table shared · 3 watching');
 	});
 });

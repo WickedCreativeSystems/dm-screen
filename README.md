@@ -25,7 +25,7 @@ DM Screen needs Obsidian 1.13.0 or later and works on desktop and mobile.
 
 Run **Share the table with players** (or click the cast icon in the ribbon). A window shows the link and its QR code. Put it on the screen for the table to scan, or copy the link into your group chat. The window has a line for the scene ("The mill at night") that shows at the top of the players' page.
 
-From then on, every change goes to their phones a moment after you make it: a new turn, a hit, a condition, a clock ticked, a roll. The status bar says how many phones are watching. The count updates each time you send something, so it reads 0 until your first change after a phone opens the link. Click it to see the link again.
+From then on, every change goes to their phones a moment after you make it: a new turn, a hit, a condition, a clock ticked, a roll. The status bar says how many phones are watching. The count checks itself every 20 seconds while Obsidian is in front, and each time you send something. Click it to see the link again.
 
 **Stop sharing the table** closes it. The players' page says the table has closed, and everything sent is deleted.
 
@@ -112,6 +112,7 @@ DM Screen uses the network only while you are sharing, or when you press **Check
 
 - When you start sharing, it asks `https://bulkhead.bananafest-destiny.com/api/table/open` for a room. That server is run by the maker of this plugin.
 - While you share, each change sends the table as described above to that room. The players' phones read it from there.
+- While you share, every 20 seconds it asks that room how many phones are watching. Only the room's own key goes with the question.
 - A handout picture goes to the same room, shrunk first. Hiding it deletes it.
 - A battle map you show sends its picture to the same room, shrunk first, and then its grid, which squares fog of war leaves revealed, and the names, squares and colours of the tokens not marked `hidden` or under fog. With fog on, the picture is darkened on the hidden squares first and sent again when you reveal more. Hiding it deletes the picture.
 - When you stop, or after 12 hours with no changes (an hour from opening, on the free trial), the room and everything in it is deleted.

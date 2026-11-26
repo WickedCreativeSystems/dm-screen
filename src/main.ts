@@ -54,6 +54,9 @@ export default class DmScreenPlugin extends Plugin {
 	private timer = 0;
 	private onSent: (() => void)[] = [];
 
+	/** How often the status bar asks how many phones watch, while sharing (26 Nov); 0 turns it off, for the tests. */
+	countEvery = 20e3;
+
 	get sharing() {
 		return !!this.settings.room;
 	}
@@ -66,6 +69,7 @@ export default class DmScreenPlugin extends Plugin {
 		this.status.addClass('mod-clickable');
 		this.status.onClickEvent(() => void this.share());
 		this.showStatus();
+		if (this.countEvery) this.registerInterval(window.setInterval(() => void this.count(), this.countEvery));
 		this.addCommand({ id: 'share', name: 'Share the table with players', callback: () => void this.share() });
 		this.addCommand({
 			id: 'stop',
@@ -386,6 +390,19 @@ export default class DmScreenPlugin extends Plugin {
 		} else if (r?.status === 200) {
 			this.watching = (r.json as { watching?: number }).watching ?? 0;
 		}
+		this.showStatus();
+		for (const f of this.onSent) f();
+	}
+
+	/** Asks the room how many phones are watching, so the count moves when a phone opens the link, not only on the next change. */
+	async count() {
+		const { room, secret } = this.settings;
+		if (!room || document.hidden) return;
+		const r = await requestUrl({ url: `${SERVER}/api/table/${room}/watching`, headers: { authorization: `Bearer ${secret}` }, throw: false }).catch(() => null);
+		if (r?.status !== 200 || this.settings.room !== room) return;
+		const n = (r.json as { watching?: number }).watching ?? 0;
+		if (n === this.watching) return;
+		this.watching = n;
 		this.showStatus();
 		for (const f of this.onSent) f();
 	}
