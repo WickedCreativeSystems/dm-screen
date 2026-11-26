@@ -15,9 +15,9 @@ All four are optional. Handouts and battle maps work without any of them.
 
 ## Install
 
-From itch: [buy DM Screen](https://bananafestdestiny.itch.io/dm-screen) and download `dm-screen.zip`. Unzip it into `<your vault>/.obsidian/plugins/`, so the files land in `.obsidian/plugins/dm-screen/`, then turn it on under **Settings → Community plugins** and paste your key (see Payment). If Obsidian is in Restricted mode, turn that off first under Settings → Community plugins.
+From itch: [buy DM Screen](https://bananafestdestiny.itch.io/dm-screen) and download `dm-screen.zip`. Unzip it into `<your vault>/.obsidian/plugins/`, so the files land in `.obsidian/plugins/dm-screen/`, then turn it on under **Settings → Community plugins** and paste your key (see Payment). If Obsidian is in Restricted mode, press **Exit Restricted mode** first under Settings → Community plugins.
 
-By hand: copy `main.js`, `manifest.json` and `styles.css` from [a release](https://github.com/WickedCreativeSystems/dm-screen/releases/latest) into `<your vault>/.obsidian/plugins/dm-screen/`, then turn it on under Community plugins. A copy installed by hand needs the same key for tables longer than an hour.
+By hand: copy `main.js`, `manifest.json` and `styles.css` from [a release](https://github.com/WickedCreativeSystems/dm-screen/releases/latest) into `<your vault>/.obsidian/plugins/dm-screen/`. Make the `plugins` and `dm-screen` folders if they aren't there. `.obsidian` is a hidden folder, so turn on hidden files in your file manager to see it. Then open Settings → Community plugins, press **Exit Restricted mode** if it shows (not **Turn on and reload**, which turns it back on), press the reload button next to Installed plugins, and switch DM Screen on. A copy installed by hand needs the same key for tables longer than an hour.
 
 DM Screen needs Obsidian 1.13.0 or later and works on desktop and mobile.
 
@@ -25,7 +25,7 @@ DM Screen needs Obsidian 1.13.0 or later and works on desktop and mobile.
 
 Run **Share the table with players** (or click the cast icon in the ribbon). A window shows the link and its QR code. Put it on the screen for the table to scan, or copy the link into your group chat. The window has a line for the scene ("The mill at night") that shows at the top of the players' page.
 
-From then on, every change goes to their phones a moment after you make it: a new turn, a hit, a condition, a clock ticked, a roll. The status bar says how many phones are watching. Click it to see the link again.
+From then on, every change goes to their phones a moment after you make it: a new turn, a hit, a condition, a clock ticked, a roll. The status bar says how many phones are watching. The count updates each time you send something, so it reads 0 until your first change after a phone opens the link. Click it to see the link again.
 
 **Stop sharing the table** closes it. The players' page says the table has closed, and everything sent is deleted.
 
@@ -33,7 +33,7 @@ From then on, every change goes to their phones a moment after you make it: a ne
 
 Show the players a letter, a riddle, a map or a portrait:
 
-- **Show to players** in a picture's or a note's menu (or the **Show this note to players** command). A picture shows as it is. A note shows its words and the first picture in it. Its properties, `%% comments %%` and code blocks stay behind, so GM notes in the same note are safe.
+- **Show to players** when you right-click a picture or a note in the file list, or in a note's ⋯ menu, (or the **Show this note to players** command). A picture shows as it is. A note shows its words and the first picture in it. Its properties, `%% comments %%` and code blocks stay behind, so GM notes in the same note are safe.
 - **Show to players** in the editor's menu, with text selected (or **Show the selected text to players**), shows just those words.
 
 The handout sits at the top of the players' page until you show another or **Hide the handout from players**. A tap opens the picture full size. Pictures are shrunk to at most 1600 pixels a side, as JPEG, before they leave your vault.
@@ -42,7 +42,7 @@ Showing a handout starts sharing if it hadn't started.
 
 ## Battle map
 
-A `battlemap` block draws a map in your note, with a grid and tokens (**Insert a battle map** puts one in to start from):
+A `battlemap` block draws a map in your note, with a grid and tokens. **Insert a battle map** puts one in to start from. Here is one (copy the lines from ```` ```battlemap ```` to the closing ```` ``` ````, not the four-backtick fence around them, which is only there to show the block):
 
 ````
 ```battlemap
@@ -56,7 +56,7 @@ Ogre
 ```
 ````
 
-- The first line is the picture and the grid, columns by rows. The picture is optional; without one you get a plain grid. The grid is at most 60 by 60. Columns past Z continue AA, AB and so on, so a 60-wide grid ends at BH.
+- The first line is the picture and the grid, columns by rows. The picture is a file in your vault (put your own map's name in place of `Mill cellar.png`). It is optional; write just `12x8` for a plain grid. The grid is at most 60 by 60. Columns past Z continue AA, AB and so on, so a 60-wide grid ends at BH.
 - Every other line is a token: a name, a square (column letter, row number, like a chessboard), and a colour if you like (red, orange, yellow, green, cyan, blue, purple or pink). A `[[link]]` in the name works.
 - A token with no square waits beside the map until you drag it on.
 - `hidden` at the end of a line keeps that token off the players' phones until you take the word out. In your note it shows faded.
