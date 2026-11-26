@@ -1,6 +1,6 @@
 {
 	"name": "dm-screen",
-	"version": "0.5.0",
+	"version": "0.5.1",
 	"description": "DM Screen: the table on your players' phones, live from Obsidian.",
 	"main": "main.js",
 	"type": "module",

@@ -58,3 +58,26 @@ describe('fromInitiativeTracker', () => {
 		expect(fromInitiativeTracker({} as ITState)).toBeNull();
 	});
 });
+
+describe('fromInitiativeTracker numbers, the way the tracker keeps them', () => {
+	const gob = (id: string, initiative: number): ITState['creatures'] extends (infer C)[] | undefined ? C : never => ({ id, name: 'Goblin', initiative, enabled: true });
+	const fight = (...creatures: NonNullable<ITState['creatures']>): ITState => ({ state: true, round: 1, creatures });
+	const names = (s: ITState, m: Map<string, number>) => fromInitiativeTracker(s, true, m)!.combatants.map((c) => c.name);
+
+	it('keeps Goblin 2 when Goblin 1 is removed, and numbers a new goblin after the highest', () => {
+		const m = new Map<string, number>();
+		expect(names(fight(gob('a', 15), gob('b', 10)), m)).toEqual(['Goblin 1', 'Goblin 2']);
+		expect(names(fight(gob('b', 10)), m)).toEqual(['Goblin 2']);
+		expect(names(fight(gob('b', 10), gob('c', 12)), m)).toEqual(['Goblin 3', 'Goblin 2']);
+	});
+
+	it('leaves a lone monster unnumbered until a second of its name joins', () => {
+		const m = new Map<string, number>();
+		expect(names(fight(gob('a', 15)), m)).toEqual(['Goblin']);
+		expect(names(fight(gob('a', 15), gob('b', 10)), m)).toEqual(['Goblin 1', 'Goblin 2']);
+	});
+
+	it('numbers in the order added without ids, as before', () => {
+		expect(fromInitiativeTracker(fight({ name: 'Goblin', initiative: 1 }, { name: 'Goblin', initiative: 9 }))!.combatants.map((c) => c.name)).toEqual(['Goblin 2', 'Goblin 1']);
+	});
+});

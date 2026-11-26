@@ -128,6 +128,7 @@ export interface ITCreature {
 	player?: boolean;
 	active?: boolean;
 	hidden?: boolean;
+	id?: string;
 }
 export interface ITState { creatures?: ITCreature[]; state?: boolean; round?: number; name?: string }
 
@@ -137,23 +138,26 @@ export interface ITState { creatures?: ITCreature[]; state?: boolean; round?: nu
  * (lowest, if it is set to ascending), ties in the order added, and a monster that shares its name with another
  * numbered 1, 2, 3 in the order added. Creatures hidden in the tracker, and ones switched off, are left out.
  * A tracker that hasn't started its fight shares no turn order.
+ * `numbers` remembers each creature's number by its id between events, because the tracker keeps a number once it
+ * is given: remove Goblin 1 and the other stays Goblin 2, and a third goblin added after is Goblin 3.
  */
-export function fromInitiativeTracker(s: ITState | null | undefined, descending = true): FightEvent | null {
+export function fromInitiativeTracker(s: ITState | null | undefined, descending = true, numbers: Map<string, number> = new Map()): FightEvent | null {
 	if (!s || !Array.isArray(s.creatures)) return null;
 	const all = s.creatures.filter((c) => c && typeof c.name === 'string');
 	const base = (c: ITCreature) => (c.display && c.display.trim()) || c.name;
 	const count = new Map<string, number>();
 	for (const c of all) if (!c.player) count.set(c.name, (count.get(c.name) ?? 0) + 1);
-	const seen = new Map<string, number>();
-	const named = all.map((c) => {
-		let name = base(c);
-		if (!c.player && (count.get(c.name) ?? 0) > 1) {
-			const n = (seen.get(name) ?? 0) + 1;
-			seen.set(name, n);
-			name = `${name} ${n}`;
-		}
-		return { c, name };
-	});
+	// the tracker's own rule: a monster keeps the number it was given; one that shares its name gets one more than the
+	// highest number already on a creature of that name
+	const got = new Map<ITCreature, number>();
+	for (const c of all) { const n = c.id ? numbers.get(c.id) : undefined; if (!c.player && n) got.set(c, n); }
+	for (const c of all) {
+		if (c.player || got.has(c) || (count.get(c.name) ?? 0) < 2) continue;
+		const prior = all.filter((o) => base(o) === base(c) && got.has(o)).map((o) => got.get(o)!);
+		got.set(c, prior.length ? Math.max(...prior) + 1 : 1);
+	}
+	for (const [c, n] of got) if (c.id) numbers.set(c.id, n);
+	const named = all.map((c) => ({ c, name: got.has(c) ? `${base(c)} ${got.get(c)}` : base(c) }));
 	const init = (c: ITCreature) => (typeof c.initiative === 'number' && isFinite(c.initiative) ? c.initiative : 0);
 	const sorted = named
 		.map((x, i) => ({ ...x, i }))

@@ -41,6 +41,8 @@ const DEFAULT_SETTINGS: Settings = { scene: '', playerHp: true, monsterHp: 'word
 export default class DmScreenPlugin extends Plugin {
 	settings: Settings = DEFAULT_SETTINGS;
 	fight: FightEvent | null = null;
+	/** Initiative Tracker numbers by creature id, kept between its events the way the tracker keeps them */
+	itNumbers = new Map<string, number>();
 	clocks: Clock[] = [];
 	rolls: Roll[] = [];
 	handout: Handout | null = null;
@@ -154,7 +156,7 @@ export default class DmScreenPlugin extends Plugin {
 		}));
 		// Initiative Tracker sends its whole fight on every change
 		this.registerEvent(on.on<ITState | undefined>('initiative-tracker:save-state', (s) => {
-			const f = fromInitiativeTracker(s, this.itDescending());
+			const f = fromInitiativeTracker(s, this.itDescending(), this.itNumbers);
 			if (!f) return;
 			this.fight = f;
 			this.changed();
@@ -217,7 +219,7 @@ export default class DmScreenPlugin extends Plugin {
 			this.settings.trial = got.trial ?? null;
 			await this.saveSettings();
 			// start with a fight Initiative Tracker already has going, if no tracker has sent one yet
-			if (!this.fight) this.fight = fromInitiativeTracker(this.itPlugin()?.data?.state, this.itDescending());
+			if (!this.fight) this.fight = fromInitiativeTracker(this.itPlugin()?.data?.state, this.itDescending(), this.itNumbers);
 			// start with the clocks already written in the open note
 			const file = this.app.workspace.getActiveFile();
 			if (file) for (const c of clocksInNote(await this.app.vault.cachedRead(file))) this.clocks = setClock(this.clocks, { sourcePath: file.path, ...c });
